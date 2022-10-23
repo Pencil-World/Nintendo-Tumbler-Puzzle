@@ -4,6 +4,8 @@
 #include<fstream>
 #include<iostream>
 #include<map>
+#include<set>
+#include<string>
 using namespace std;
 
 // black = 0, red = 1, orange = 2, yellow = 3, green = 4, blue = 5
@@ -18,15 +20,14 @@ struct Edge {
 
 class Config {
 private:
-	bool isUp = false;
-	array<short, 3> hidden;
-
-	void printHidden() {
+	void printHidden() const {
 		for (auto item : hidden)
 			cout << item << "   ";
 		cout << endl;
 	}
 public:
+	bool isUp = false;
+	array<short, 3> hidden;
 	array<array<short, 2>, 5> upper, lower;
 	Edge* edge = nullptr; // the past move which created the current configuration
 	bool isLeaf = true;
@@ -48,10 +49,10 @@ public:
 				return;
 			case Move::Switch:
 				isUp = !isUp;
-				//array<array<short, 2>, 5>::iterator _upper = upper.begin(), _lower = lower.begin();
 				for (int index = 0; index < 3; ++index) {
 					short& item = hidden[index];
-					array<short, 2>& _upper = upper[index * 2], _lower = lower[index * 2];
+					array<short, 2>& _upper = upper[index * 2];
+					array<short, 2>& _lower = lower[index * 2];
 					if (isUp) {
 						swap(item, _lower[1]);
 						swap(item, _lower[0]);
@@ -63,17 +64,17 @@ public:
 						swap(item, _lower[0]);
 						swap(item, _lower[1]);
 					}
-
 				}
 		}
 	}
 
-	void print() {
+	void print() const {
 		if (isUp) printHidden();
 		for (int index = 0; index < 4; ++index) {
-			array<array<short, 2>, 5>* curr = index < 2 ? &upper : &lower;
+			const array<array<short, 2>, 5>* curr = index < 2 ? &upper : &lower;
 			for (auto const& item : *curr)
-				cout << item[index % 2] << "   ";
+				cout << item[index % 2] << " ";
+			cout << endl;
 		}
 
 		if (!isUp) printHidden();
@@ -81,57 +82,104 @@ public:
 	}
 };
 
-inline bool operator< (const Config& lhs, const Config& rhs) { return lhs.upper < rhs.upper&& lhs.lower < rhs.lower; }
-inline bool operator> (const Config& lhs, const Config& rhs) { return  operator< (rhs, lhs); }
+inline bool operator< (const Config& lhs, const Config& rhs) { return lhs.isUp < rhs.isUp || (lhs.isUp == rhs.isUp && (lhs.upper < rhs.upper || (lhs.upper == rhs.upper && (lhs.lower < rhs.lower || (lhs.lower == rhs.lower && lhs.hidden < rhs.hidden))))); }// account for hidden
+//inline bool operator> (const Config& lhs, const Config& rhs) { return  operator< (rhs, lhs); }
+//inline bool operator==(const Config& lhs, const Config& rhs) { return lhs.isUp == rhs.isUp && lhs.upper == rhs.upper && lhs.lower == rhs.lower && lhs.hidden == rhs.hidden; }
 
 // emulates find_first_of
 map<Config, bool>::const_iterator find(map<Config, bool>& a, map<Config, bool> const& b) {
-	for (auto const& [element, isLeaf] : a) {
-		map<Config, bool>::const_iterator it = b.find(element);
-		if (isLeaf && it != b.end())
+	for (auto const& [element, isLeaf] : b) {
+		map<Config, bool>::const_iterator it = a.find(element);
+		if (isLeaf && it != a.end()) {
+			element.print();
+			it->first.print();
 			return it;
+		}
 	}
 
 	return a.end();
 }
 
-int main() {
-	Config begin = Config(	{ { {{5, 4}}, {{4, 1}}, {{2, 5}}, {{5, 2}}, {{2, 4}} } },
+/*
+{ { {{5, 4}}, {{4, 1}}, {{2, 5}}, {{5, 2}}, {{2, 4}} } },
 							{ { {{3, 1}}, {{1, 3}}, {{4, 2}}, {{0, 1}}, {{0, 0}} } },
-							{ {	3,					3,					5} });
+							{ {	3,					3,					5} }
+*/
+
+int main() {
+	Config begin = Config({ { {{5, 4}}, {{4, 1}}, {{2, 5}}, {{5, 2}}, {{2, 4}} } },
+		{ { {{3, 1}}, {{1, 3}}, {{4, 2}}, {{0, 1}}, {{0, 0}} } },
+		{ {	3,					3,					5} });
 	Config end = Config(	{ { {{5, 5}}, {{1, 1}}, {{4, 4}}, {{3, 3}}, {{2, 2}} } },
 							{ { {{5, 5}}, {{1, 1}}, {{4, 4}}, {{3, 3}}, {{2, 2}} } },
 							{ {	0,					0,					0} });
 	map<Config, bool>::const_iterator center;
 
 	// meet-in-the-middle: one set works forward to the solution, one set works backward from the solution
-	map<Config, bool> forward = {	{ Config(begin, new Edge(Move::UpperLeft)), true },
+	map<Config, bool> forward = {	{ begin, false }, 
+									{ Config(begin, new Edge(Move::UpperLeft)), true },
 									{ Config(begin, new Edge(Move::UpperRight)), true },
 									{ Config(begin, new Edge(Move::LowerLeft)), true},
 									{ Config(begin, new Edge(Move::LowerRight)), true },
 									{ Config(begin, new Edge(Move::Switch)), true } };
-	map<Config, bool> backward = {	{ Config(end, new Edge(Move::UpperLeft)), true },
+	map<Config, bool> backward = {	{ end, false }, 
+									{ Config(end, new Edge(Move::UpperLeft)), true },
 									{ Config(end, new Edge(Move::UpperRight)), true },
 									{ Config(end, new Edge(Move::LowerLeft)), true },
 									{ Config(end, new Edge(Move::LowerRight)), true },
 									{ Config(end, new Edge(Move::Switch)), true } };
 
 	for (bool flipflop = true; (center = find(forward, backward)) == forward.end(); flipflop = !flipflop) {
-		map<Config, bool>* curr = flipflop ? &forward : &backward; // set automatically terminates repeated paths
-		for (auto& [element, isLeaf] : *curr) {
+		//map<Config, bool>* curr = flipflop ? &forward : &backward; // automatically terminates repeated paths
+		//for (auto& [element, isLeaf] : *curr) {
+		//	if (isLeaf) {
+		//		Edge* edge = element.edge;
+		//		isLeaf = false;
+		//		if (edge->move != Move::UpperRight)
+		//			(*curr)[Config(element, new Edge(Move::UpperLeft, edge))] = true;
+		//		if (edge->move != Move::UpperLeft)
+		//			(*curr)[Config(element, new Edge(Move::UpperRight, edge))] = true;
+		//		if (edge->move != Move::LowerRight)
+		//			(*curr)[Config(element, new Edge(Move::LowerLeft, edge))] = true;
+		//		if (edge->move != Move::LowerLeft)
+		//			(*curr)[Config(element, new Edge(Move::LowerRight, edge))] = true;
+		//		if (edge->move != Move::Switch)
+		//			(*curr)[Config(element, new Edge(Move::Switch, edge))] = true;
+		//	} else {
+		//		//delete
+		//	}
+		for (auto& [element, isLeaf] : forward) {
 			if (isLeaf) {
 				Edge* edge = element.edge;
 				isLeaf = false;
 				if (edge->move != Move::UpperRight)
-					forward.emplace(element, new Edge(Move::UpperLeft, edge));
+					forward[Config(element, new Edge(Move::UpperLeft, edge))] = true;
 				if (edge->move != Move::UpperLeft)
-					forward.emplace(element, new Edge(Move::UpperRight, edge));
+					forward[Config(element, new Edge(Move::UpperRight, edge))] = true;
 				if (edge->move != Move::LowerRight)
-					forward.emplace(element, new Edge(Move::LowerLeft, edge));
+					forward[Config(element, new Edge(Move::LowerLeft, edge))] = true;
 				if (edge->move != Move::LowerLeft)
-					forward.emplace(element, new Edge(Move::LowerRight, edge));
+					forward[Config(element, new Edge(Move::LowerRight, edge))] = true;
 				if (edge->move != Move::Switch)
-					forward.emplace(element, new Edge(Move::Switch, edge));
+					forward[Config(element, new Edge(Move::Switch, edge))] = true;
+			} else {
+				//delete
+			}
+		}
+		for (auto& [element, isLeaf] : backward) {
+			if (isLeaf) {
+				Edge* edge = element.edge;
+				isLeaf = false;
+				if (edge->move != Move::UpperRight)
+					backward[Config(element, new Edge(Move::UpperLeft, edge))] = true;
+				if (edge->move != Move::UpperLeft)
+					backward[Config(element, new Edge(Move::UpperRight, edge))] = true;
+				if (edge->move != Move::LowerRight)
+					backward[Config(element, new Edge(Move::LowerLeft, edge))] = true;
+				if (edge->move != Move::LowerLeft)
+					backward[Config(element, new Edge(Move::LowerRight, edge))] = true;
+				if (edge->move != Move::Switch)
+					backward[Config(element, new Edge(Move::Switch, edge))] = true;
 			} else {
 				//delete
 			}
@@ -144,9 +192,10 @@ int main() {
 	for (Edge* edge = backward.find(center->first)->first.edge; edge; edge = edge->parent)
 		graph.push_back(edge->move);
 
-
-	//for (auto const& element : graph)
-	//	cout << element << endl;
+	map<Move, string> table{ { Move::UpperLeft, "UpperLeft" }, { Move::UpperRight, "UpperRight" }, { Move::LowerLeft, "LowerLeft" }, { Move::LowerRight, "LowerRight" }, { Move::Switch, "Switch" } };
+	fstream solution("solution.txt");
+	for (Move item : graph)
+		solution << table[item] << endl;
 
 	system("pause");
 	return 0;
