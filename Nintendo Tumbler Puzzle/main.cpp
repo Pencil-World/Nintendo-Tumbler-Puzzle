@@ -21,18 +21,10 @@ private:
 	bool isUp = false;
 	array<short, 3> hidden;
 
-	void printUpper() {
-
-	}
-
 	void printHidden() {
 		for (auto item : hidden)
 			cout << item << "   ";
 		cout << endl;
-	}
-
-	void printLower() {
-
 	}
 public:
 	array<array<short, 2>, 5> upper, lower;
@@ -56,33 +48,36 @@ public:
 				return;
 			case Move::Switch:
 				isUp = !isUp;
-				array<array<short, 2>, 5>::iterator _upper = upper.begin(), _lower = lower.begin();
-				for (short& item : hidden) {
+				//array<array<short, 2>, 5>::iterator _upper = upper.begin(), _lower = lower.begin();
+				for (int index = 0; index < 3; ++index) {
+					short& item = hidden[index];
+					array<short, 2>& _upper = upper[index * 2], _lower = lower[index * 2];
 					if (isUp) {
-						swap(item, (*_lower)[1]);
-						swap(item, (*_lower)[0]);
-						swap(item, (*_upper)[1]);
-						swap(item, (*_upper)[0]);
+						swap(item, _lower[1]);
+						swap(item, _lower[0]);
+						swap(item, _upper[1]);
+						swap(item, _upper[0]);
 					} else {
-						swap(item, (*_upper)[0]);
-						swap(item, (*_upper)[1]);
-						swap(item, (*_lower)[0]);
-						swap(item, (*_lower)[1]);
+						swap(item, _upper[0]);
+						swap(item, _upper[1]);
+						swap(item, _lower[0]);
+						swap(item, _lower[1]);
 					}
 
-					_upper += 2;
-					_lower += 2;
 				}
 		}
 	}
 
 	void print() {
-		cout << endl;
-		if (!isUp) {
-			for (auto item : hidden)
-				cout << item << "   ";
-			cout << endl;
+		if (isUp) printHidden();
+		for (int index = 0; index < 4; ++index) {
+			array<array<short, 2>, 5>* curr = index < 2 ? &upper : &lower;
+			for (auto const& item : *curr)
+				cout << item[index % 2] << "   ";
 		}
+
+		if (!isUp) printHidden();
+		cout << endl;
 	}
 };
 
@@ -90,10 +85,10 @@ inline bool operator< (const Config& lhs, const Config& rhs) { return lhs.upper 
 inline bool operator> (const Config& lhs, const Config& rhs) { return  operator< (rhs, lhs); }
 
 // emulates find_first_of
-map<Config, bool>::iterator find(map<Config, bool>& a, map<Config, bool> const& b) {
+map<Config, bool>::const_iterator find(map<Config, bool>& a, map<Config, bool> const& b) {
 	for (auto const& [element, isLeaf] : a) {
-		map<Config, bool>::iterator it;
-		if (isLeaf && b.contains(element))
+		map<Config, bool>::const_iterator it = b.find(element);
+		if (isLeaf && it != b.end())
 			return it;
 	}
 
@@ -107,7 +102,7 @@ int main() {
 	Config end = Config(	{ { {{5, 5}}, {{1, 1}}, {{4, 4}}, {{3, 3}}, {{2, 2}} } },
 							{ { {{5, 5}}, {{1, 1}}, {{4, 4}}, {{3, 3}}, {{2, 2}} } },
 							{ {	0,					0,					0} });
-	map<Config, bool>::iterator center;
+	map<Config, bool>::const_iterator center;
 
 	// meet-in-the-middle: one set works forward to the solution, one set works backward from the solution
 	map<Config, bool> forward = {	{ Config(begin, new Edge(Move::UpperLeft)), true },
@@ -121,7 +116,6 @@ int main() {
 									{ Config(end, new Edge(Move::LowerRight)), true },
 									{ Config(end, new Edge(Move::Switch)), true } };
 
-	// unroll for loop?
 	for (bool flipflop = true; (center = find(forward, backward)) == forward.end(); flipflop = !flipflop) {
 		map<Config, bool>* curr = flipflop ? &forward : &backward; // set automatically terminates repeated paths
 		for (auto& [element, isLeaf] : *curr) {
