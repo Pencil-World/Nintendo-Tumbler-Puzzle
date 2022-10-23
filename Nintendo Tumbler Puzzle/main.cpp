@@ -130,56 +130,21 @@ int main() {
 									{ Config(end, new Edge(Move::Switch)), true } };
 
 	for (bool flipflop = true; (center = find(forward, backward)) == forward.end(); flipflop = !flipflop) {
-		//map<Config, bool>* curr = flipflop ? &forward : &backward; // automatically terminates repeated paths
-		//for (auto& [element, isLeaf] : *curr) {
-		//	if (isLeaf) {
-		//		Edge* edge = element.edge;
-		//		isLeaf = false;
-		//		if (edge->move != Move::UpperRight)
-		//			(*curr)[Config(element, new Edge(Move::UpperLeft, edge))] = true;
-		//		if (edge->move != Move::UpperLeft)
-		//			(*curr)[Config(element, new Edge(Move::UpperRight, edge))] = true;
-		//		if (edge->move != Move::LowerRight)
-		//			(*curr)[Config(element, new Edge(Move::LowerLeft, edge))] = true;
-		//		if (edge->move != Move::LowerLeft)
-		//			(*curr)[Config(element, new Edge(Move::LowerRight, edge))] = true;
-		//		if (edge->move != Move::Switch)
-		//			(*curr)[Config(element, new Edge(Move::Switch, edge))] = true;
-		//	} else {
-		//		//delete
-		//	}
-		for (auto& [element, isLeaf] : forward) {
+		map<Config, bool>* curr = flipflop ? &forward : &backward; // automatically terminates repeated paths
+		for (auto& [element, isLeaf] : *curr) {
 			if (isLeaf) {
 				Edge* edge = element.edge;
 				isLeaf = false;
 				if (edge->move != Move::UpperRight)
-					forward[Config(element, new Edge(Move::UpperLeft, edge))] = true;
+					(*curr)[Config(element, new Edge(Move::UpperLeft, edge))] = true;
 				if (edge->move != Move::UpperLeft)
-					forward[Config(element, new Edge(Move::UpperRight, edge))] = true;
+					(*curr)[Config(element, new Edge(Move::UpperRight, edge))] = true;
 				if (edge->move != Move::LowerRight)
-					forward[Config(element, new Edge(Move::LowerLeft, edge))] = true;
+					(*curr)[Config(element, new Edge(Move::LowerLeft, edge))] = true;
 				if (edge->move != Move::LowerLeft)
-					forward[Config(element, new Edge(Move::LowerRight, edge))] = true;
+					(*curr)[Config(element, new Edge(Move::LowerRight, edge))] = true;
 				if (edge->move != Move::Switch)
-					forward[Config(element, new Edge(Move::Switch, edge))] = true;
-			} else {
-				//delete
-			}
-		}
-		for (auto& [element, isLeaf] : backward) {
-			if (isLeaf) {
-				Edge* edge = element.edge;
-				isLeaf = false;
-				if (edge->move != Move::UpperRight)
-					backward[Config(element, new Edge(Move::UpperLeft, edge))] = true;
-				if (edge->move != Move::UpperLeft)
-					backward[Config(element, new Edge(Move::UpperRight, edge))] = true;
-				if (edge->move != Move::LowerRight)
-					backward[Config(element, new Edge(Move::LowerLeft, edge))] = true;
-				if (edge->move != Move::LowerLeft)
-					backward[Config(element, new Edge(Move::LowerRight, edge))] = true;
-				if (edge->move != Move::Switch)
-					backward[Config(element, new Edge(Move::Switch, edge))] = true;
+					(*curr)[Config(element, new Edge(Move::Switch, edge))] = true;
 			} else {
 				//delete
 			}
