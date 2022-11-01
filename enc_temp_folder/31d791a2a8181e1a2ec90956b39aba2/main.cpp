@@ -1,13 +1,11 @@
 #include<algorithm>
 #include<array>
 #include<chrono>
-#include<cstdlib>
 #include<deque>
 #include<fstream>
 #include<iostream>
 #include<map>
 #include<string>
-#include<vector>
 using namespace std;
 
 // black = 0, red = 1, orange = 2, yellow = 3, green = 4, blue = 5
@@ -32,6 +30,7 @@ public:
 	array<short, 3> hidden;
 	array<array<short, 2>, 5> upper, lower;
 	Edge* edge = nullptr; // the past move which created the current configuration
+	bool isLeaf = true;
 
 	Config(array<array<short, 2>, 5> upper, array<array<short, 2>, 5> lower, array<short, 3> hidden) : upper(upper), lower(lower), hidden(hidden) {}
 	Config(array<short, 3> hidden, array<array<short, 2>, 5> upper, array<array<short, 2>, 5> lower) : upper(upper), lower(lower), hidden(hidden), isUp(true) {}
@@ -39,16 +38,16 @@ public:
 		switch (edge->move) {
 			case Move::UpperLeft:
 				ranges::rotate(upper, upper.begin() + 1);
-				return;
+				break;
 			case Move::UpperRight:
 				ranges::rotate(upper, upper.end() - 1);
-				return;
+				break;
 			case Move::LowerLeft:
 				ranges::rotate(lower, lower.begin() + 1);
-				return;
+				break;
 			case Move::LowerRight:
 				ranges::rotate(lower, lower.end() - 1);
-				return;
+				break;
 			case Move::Switch:
 				isUp = !isUp;
 				for (int index = 0; index < 3; ++index) {
@@ -88,10 +87,10 @@ inline bool operator< (const Config& lhs, const Config& rhs) { return lhs.isUp <
 inline bool operator==(const Config& lhs, const Config& rhs) { return lhs.isUp == rhs.isUp && lhs.upper == rhs.upper && lhs.lower == rhs.lower && lhs.hidden == rhs.hidden; }
 
 // emulates find_first_of
-map<Config, bool>::const_iterator find(map<Config, bool>& a, map<Config, bool> const& b) {
+map<Config, int>::const_iterator find(map<Config, int>& a, map<Config, int> const& b) {
 	for (auto const& [element, isLeaf] : b) {
-		map<Config, bool>::const_iterator it = a.find(element);
-		if (it != a.end()) {
+		map<Config, int>::const_iterator it = a.find(element);
+		if (isLeaf < 3 && it != a.end()) {
 			element.print();
 			it->first.print();
 			return it;
@@ -121,14 +120,16 @@ int main() {
 	Config end = Config(	{ { {{5, 5}}, {{1, 1}}, {{4, 4}}, {{3, 3}}, {{2, 2}} } },
 							{ { {{5, 5}}, {{1, 1}}, {{4, 4}}, {{3, 3}}, {{2, 2}} } },
 							{ {	0,					0,					0} });
-	map<Config, bool>::const_iterator center;
+	map<Config, int>::const_iterator center;
 
-	map<Config, bool> forward = {	{ Config(begin, new Edge(Move::UpperLeft)), true },
+	map<Config, int> forward = {	{ begin, 2 }, 
+									{ Config(begin, new Edge(Move::UpperLeft)), true },
 									{ Config(begin, new Edge(Move::UpperRight)), true },
 									{ Config(begin, new Edge(Move::LowerLeft)), true},
 									{ Config(begin, new Edge(Move::LowerRight)), true },
 									{ Config(begin, new Edge(Move::Switch)), true } };
-	map<Config, bool> backward = {	{ Config(end, new Edge(Move::UpperLeft)), true },
+	map<Config, int> backward = {	{ end, 2 }, 
+									{ Config(end, new Edge(Move::UpperLeft)), true },
 									{ Config(end, new Edge(Move::UpperRight)), true },
 									{ Config(end, new Edge(Move::LowerLeft)), true },
 									{ Config(end, new Edge(Move::LowerRight)), true },
@@ -141,40 +142,25 @@ int main() {
 			cout << static_cast<int>((std::chrono::steady_clock::now() - start).count() / 1'000'000'000) << ": forward " << forward.size() << ", backward " << backward.size() << endl;
 		}
 
-		vector<map<Config, bool>::const_iterator> garbageman;
-		map<Config, bool>* curr = flipflop ? &forward : &backward; // automatically terminates repeated paths
-		for (auto it = curr->begin(); it != curr->end(); ++it) {
-			bool& isLeaf = it->second;
-			if (isLeaf == flag) {
-				Config const& element = it->first;
+		map<Config, int>* curr = flipflop ? &forward : &backward; // automatically terminates repeated paths
+		for (auto& [element, isLeaf] : *curr) {
+			if (isLeaf == 2)
+				isLeaf = 3;
+			else if (isLeaf == flag) {
 				Edge* edge = element.edge;
-				garbageman.push_back(it);
-
-				// memory leaks
+				isLeaf = 2;
 				if (edge->move != Move::UpperRight)
-					curr->emplace(piecewise_construct,
-						forward_as_tuple(element, new Edge(Move::UpperLeft, edge)),
-						forward_as_tuple(!flag));
+					(*curr)[Config(element, new Edge(Move::UpperLeft, edge))] = !flag;
 				if (edge->move != Move::UpperLeft)
-					curr->emplace(piecewise_construct,
-						forward_as_tuple(element, new Edge(Move::UpperRight, edge)),
-						forward_as_tuple(!flag));
+					(*curr)[Config(element, new Edge(Move::UpperRight, edge))] = !flag;
 				if (edge->move != Move::LowerRight)
-					curr->emplace(piecewise_construct,
-						forward_as_tuple(element, new Edge(Move::LowerLeft, edge)),
-						forward_as_tuple(!flag));
+					(*curr)[Config(element, new Edge(Move::LowerLeft, edge))] = !flag;
 				if (edge->move != Move::LowerLeft)
-					curr->emplace(piecewise_construct,
-						forward_as_tuple(element, new Edge(Move::LowerRight, edge)),
-						forward_as_tuple(!flag));
+					(*curr)[Config(element, new Edge(Move::LowerRight, edge))] = !flag;
 				if (edge->move != Move::Switch)
-					curr->emplace(piecewise_construct,
-						forward_as_tuple(element, new Edge(Move::Switch, edge)),
-						forward_as_tuple(!flag));
+					(*curr)[Config(element, new Edge(Move::Switch, edge))] = !flag;
 			}
 		}
-
-		ranges::for_each(garbageman, [&curr](auto const& it) { curr->erase(it); });
 	}
 
 	deque<string> graph;
