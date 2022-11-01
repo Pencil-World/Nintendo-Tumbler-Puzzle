@@ -68,7 +68,6 @@ public:
 				}
 		}
 
-		og.print();
 		print();
 	}
 
@@ -136,26 +135,47 @@ int main() {
 		if (flipflop) flag = !flag;
 		map<Config, int>* curr = flipflop ? &forward : &backward; // automatically terminates repeated paths
 		for (auto& [element, isLeaf] : *curr) {
-			if (isLeaf == 2) {
-				//curr->erase(element);
-			} else {
-				if (isLeaf == flag) {
-					cout << "-----" << endl << endl;
-					element.print();
-					cout << "-----" << endl << endl;
+			if (isLeaf == flag) {
+				cout << "-----" << endl << endl;
+				element.print();
+				cout << "-----" << endl << endl;
 
-					Edge* edge = element.edge;
-					isLeaf = 2;
-					if (edge->move != Move::UpperRight)
-						(*curr)[Config(element, new Edge(Move::UpperLeft, edge))] = !flag;
-					if (edge->move != Move::UpperLeft)
-						(*curr)[Config(element, new Edge(Move::UpperRight, edge))] = !flag;
-					if (edge->move != Move::LowerRight)
-						(*curr)[Config(element, new Edge(Move::LowerLeft, edge))] = !flag;
-					if (edge->move != Move::LowerLeft)
-						(*curr)[Config(element, new Edge(Move::LowerRight, edge))] = !flag;
-					if (edge->move != Move::Switch)
-						(*curr)[Config(element, new Edge(Move::Switch, edge))] = !flag;
+				Edge* edge = element.edge;
+				isLeaf = 2;
+
+				if (edge->move != Move::UpperRight) {
+					Config temp = Config(element, new Edge(Move::UpperLeft, edge));
+					auto it = curr->find(temp);
+					if (it != curr->end()) it->first.print();
+					(*curr)[temp] = !flag;
+				}
+
+				if (edge->move != Move::UpperLeft) {
+					Config temp = Config(element, new Edge(Move::UpperRight, edge));
+					auto it = curr->find(temp);
+					if (it != curr->end()) it->first.print();
+					(*curr)[temp] = !flag;
+				}
+
+				if (edge->move != Move::LowerRight) {
+					Config temp = Config(element, new Edge(Move::LowerLeft, edge));
+					auto it = curr->find(temp);
+					if (it != curr->end()) it->first.print();
+					(*curr)[temp] = !flag;
+				}
+
+				if (edge->move != Move::LowerLeft) {
+					Config temp = Config(element, new Edge(Move::LowerRight, edge));
+					auto it = curr->find(temp);
+					if (it != curr->end()) it->first.print();
+					(*curr)[temp] = !flag;
+				}
+
+				if (edge->move != Move::Switch) { 
+					Config temp = Config(element, new Edge(Move::Switch, edge));
+					auto it = curr->find(temp);
+					if (it != curr->end()) it->first.print();
+					(*curr)[temp] = !flag;
 				}
 			}
 		}
